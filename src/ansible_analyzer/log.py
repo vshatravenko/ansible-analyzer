@@ -6,7 +6,7 @@ DEFAULT_LOG_LEVEL = "INFO"
 
 
 def init_logger() -> logging.Logger:
-    log_level = os.environ.get(LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL)
+    log_level = os.environ.get(LOG_LEVEL_ENV_VAR, DEFAULT_LOG_LEVEL).upper()
     logging.basicConfig(level=log_level)
     logger = logging.getLogger("ansible-analyzer")
 
