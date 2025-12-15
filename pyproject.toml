@@ -1,7 +1,7 @@
 [project]
 name = "ansible-analyzer"
-version = "0.1.0"
-description = "Add your description here"
+version = "0.1.1"
+description = "CLI for Ansible role & playbook analysis & visualization"
 readme = "README.md"
 authors = [
     { name = "Valentine Shatravenko", email = "vshatravenko@gmail.com" }

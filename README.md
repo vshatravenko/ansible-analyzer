@@ -4,6 +4,15 @@
 project by building a graph representation of each playbook and role task
 included.
 
+## Requirements
+
+You need to install the `graphviz` OS package in order to use this CLI:
+
+* macOS - `brew install graphviz`
+* Debian/Ubuntu - `apt install graphviz`
+* Fedora - `dnf install graphviz`
+* Arch Linux - `pacman -Sy graphviz`
+
 ## Usage
 
 To analyze a specific playbook, run:
@@ -32,4 +41,4 @@ where
 
 Finally, the CLI will save a `.png` file containing a graph representation
 of your project similar to the following:
-![example graph](./example_graph.png)
+![example graph](https://github.com/vshatravenko/ansible-analyzer/blob/main/example_graph.png)
