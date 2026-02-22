@@ -42,3 +42,6 @@ where
 Finally, the CLI will save a `.png` file containing a graph representation
 of your project similar to the following:
 ![example graph](https://github.com/vshatravenko/ansible-analyzer/blob/main/example_graph.png)
+
+To print role & task statistics, use `-s`.
+To disable graph output, use `--no-out`.

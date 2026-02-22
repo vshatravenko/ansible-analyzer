@@ -17,12 +17,17 @@ def handle_playbook(args):
     logger.info(f"Analyzing playbook {fname}")
     g.analyze_playbook(Path(fname))
 
-    logger.info(f"Saving graph output to {output_path}")
-    g.write_graph("png", output_path)
+    if args.stats:
+        print(g.calculate_stats())
+
+    if not args.no_out:
+        logger.info(f"Saving graph output to {output_path}")
+        g.write_graph("png", output_path)
 
 
 def handle_all(args):
     g = AnsibleGraph(Path(args.roles_dir))
+
     output_path = Path(args.output_path)
     directory = Path(args.directory)
     if not directory.is_dir():
@@ -31,8 +36,12 @@ def handle_all(args):
     logger.info(f"Analyzing all playbooks under {directory}")
     g.analyze_all(directory)
 
-    logger.info(f"Saving graph output to {output_path}")
-    g.write_graph("png", output_path)
+    if args.stats:
+        print(g.calculate_stats())
+
+    if not args.no_out:
+        logger.info(f"Saving graph output to {output_path}")
+        g.write_graph("png", output_path)
 
 
 def main():
@@ -46,6 +55,20 @@ def main():
     )
     shared_parser.add_argument(
         "-o", "--output-path", default=DEFAULT_OUTPUT_PATH, help="playbook path"
+    )
+    shared_parser.add_argument(
+        "-s",
+        "--stats",
+        action="store_true",
+        default=False,
+        help="Print role & task stats",
+    )
+
+    shared_parser.add_argument(
+        "--no-out",
+        action="store_true",
+        default=False,
+        help="Avoid rendering the graph",
     )
 
     root_parser = argparse.ArgumentParser(prog="ansible-analyzer")

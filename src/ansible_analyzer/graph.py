@@ -5,6 +5,8 @@ from pathlib import Path
 import pydot
 from yaml import safe_load
 
+from .role import RoleStats
+
 PLAYBOOK_COLOR = "azure"
 PLAYBOOK_SHAPE = "ellipse"
 TASK_COLOR = "aliceblue"
@@ -13,7 +15,7 @@ TASK_SHAPE = "rectangle"
 NODE_MARGIN = 0.5
 NODE_STYLE = "filled"
 
-PLAYBOOK_KEYWORDS = ["deployment_task"]
+# PLAYBOOK_KEYWORDS = ["deployment_task"]
 ROLE_KEYWORDS = ["include_tasks"]
 
 
@@ -30,8 +32,11 @@ def load_playbook(path: Path) -> list[dict]:
 
 
 class AnsibleGraph:
+    roles_stats: dict[str, RoleStats]
+
     def __init__(self, roles_dir: Path) -> None:
         self.roles_dir = Path(roles_dir)
+        self.roles_stats = {}
         self.graph = pydot.Dot(strict=True)
         self.graph.set_graph_defaults(dpi="300")
 
@@ -63,7 +68,11 @@ class AnsibleGraph:
 
             if "roles" in play.keys():
                 # TODO: support multiple roles
-                role_name = play.get("roles", [])[0]
+                roles = play.get("roles", [])
+                if len(roles) == 0:
+                    raise ValueError(f"play {name} has an empty 'roles' field!")
+
+                role_name = roles[0]
 
                 play_vars = play.get("vars", {})
                 self.analyze_role(root, role_name, play_vars)
@@ -74,11 +83,20 @@ class AnsibleGraph:
         following include_tasks directives recursively
         """
         logger.debug(f"analyze_role for {name} started")
+
         if play_vars:
             logger.debug(f"included vars: {play_vars}")
 
         # TODO: these can be relative paths instead of role names
         role_dir = self.roles_dir.joinpath(name)
+
+        logger.debug(f"loading role {name} stats")
+        if name not in self.roles_stats:
+            logger.debug("no stats found, initializing")
+            stats = RoleStats(name, role_dir)
+            stats.load_tasks()
+            self.roles_stats[name] = stats
+
         base_dir = role_dir / "tasks"
 
         if not base_dir.exists():
@@ -94,7 +112,10 @@ class AnsibleGraph:
         path = base_path / task_file
         logger.debug(f"Analyzing {path} task file")
 
-        tasks = parse_yaml(path)
+        logger.debug(f"Marking task file {task_file} as used in role stats")
+        self.roles_stats[role_name].used_tasks.add(task_file)
+
+        tasks = list(parse_yaml(path))
         basename = path.parts[-1]
 
         root = pydot.Node(
@@ -106,10 +127,10 @@ class AnsibleGraph:
             style=NODE_STYLE,
         )
 
-        for task in list(tasks):
+        for task in tasks:
             if "block" in task.keys():
                 logger.debug(f"block detected in {basename}, expanding")
-                tasks.append(task.get("block", []))
+                tasks.extend(task.get("block", []))
                 continue
 
             INCLUDE_TASK_KEY = "ansible.builtin.include_tasks"
@@ -125,6 +146,7 @@ class AnsibleGraph:
                         raise ValueError(
                             f"{include_path_var} is missing from play vars - {play_vars}"
                         )
+                    logger.debug(f"dynamic include: loading {include_path}")
 
                 node = self.analyze_task_file(
                     role_name, base_path, include_path, play_vars
@@ -141,6 +163,18 @@ class AnsibleGraph:
                 if not (".yml" in f or ".yaml" in f):
                     continue
                 self.analyze_playbook(Path(dirpath) / f)
+
+    def calculate_stats(self) -> str:
+        res = f"Total roles: {len(self.roles_stats)}\n"
+
+        for role, stats in self.roles_stats.items():
+            res += f"Role {role}:\n"
+            unused_tasks = stats.total_tasks - stats.used_tasks
+            formatted_tasks = "\n    ".join(unused_tasks)
+            res += f"  Used tasks: {len(stats.used_tasks)}\n"
+            res += f"  Unused tasks:\n    {formatted_tasks}\n"
+
+        return res
 
     def write_graph(self, format: str, output_path: Path):
         self.graph.write(path=str(output_path), format=format)
